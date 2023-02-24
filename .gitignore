@@ -106,3 +106,4 @@ dist
 /http-forward-connection/.idea
 /.idea/
 /http-forward-connection/build/
+/http-forward-connection/package-lock.json

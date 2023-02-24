@@ -1,5 +1,6 @@
 `use strict`
 
+const Addon = require('bindings')('addon.node')
 const Cluster = require(`cluster`);
 const Express = require(`express`);
 const Https = require(`https`);
@@ -18,7 +19,7 @@ const opts = {
     cert: Fs.readFileSync('secure.pem')
   },
   loadBalance: `round-robin`,
-  workersTotal: Os.cpus().length,
+  workers: Os.cpus().length,
 };
 
 // ready to server or worker on node-clustering
@@ -36,7 +37,7 @@ function onServerProcess(opts) {
     console.log(`${process.pid}| http listen=${opts.httpPort}`);
   });
   http.on(`connection`, function onTcpConnect(socket) {
-    const workerIndex = loadBalance(opts.loadBalance, socket);
+    const workerIndex = loadBalance(socket, opts.workers, opts.loadBalance);
     forwardSocket(workerIndex, `${opts.httpPort}`, socket);
   });
 
@@ -46,13 +47,13 @@ function onServerProcess(opts) {
     console.log(`${process.pid}| https listen=${opts.httpsPort}`);
   });
   https.on(`connection`, function onTlsConnect(socket) {
-    const workerIndex = loadBalance(socket, opts.workersTotal, opts.loadBalance);
+    const workerIndex = loadBalance(socket, opts.workers, opts.loadBalance);
     forwardSocket(workerIndex, `${opts.httpsPort}`, socket);
   });
 
   // worker processes are spawned
   const workers = [];
-  for (let index = 0; index < opts.workersTotal; index++) {
+  for (let index = 0; index < opts.workers; index++) {
     spawn(index);
   }
 
@@ -67,16 +68,16 @@ function onServerProcess(opts) {
   }
 
   // load balancing incoming client connections to worker processes
-  function loadBalance(socket, workers = Os.cpus().length, algorithm = `round-robin`) {
+  function loadBalance(socket, total = Os.cpus().length, algorithm = `round-robin`) {
     if (undefined === loadBalance.index) {
       loadBalance.index = -1;
     }
     if (`ip-hash` === algorithm) {
-      loadBalance.index = Number(socket.remoteAddress.replace(/\D/g,'')) % workers;
+      loadBalance.index = Number(socket.remoteAddress.replace(/\D/g,'')) % total;
     } else if (`round-robin` === algorithm) {
-      loadBalance.index = (loadBalance.index + 1) % workers;
+      loadBalance.index = (loadBalance.index + 1) % total;
     } else {
-      loadBalance.index = (loadBalance.index + 1) % workers;
+      loadBalance.index = (loadBalance.index + 1) % total;
     }
     return loadBalance.index;
   }
@@ -85,7 +86,10 @@ function onServerProcess(opts) {
   function forwardSocket(workerIndex, message, socket) {
     const worker = workers[workerIndex];
     if (worker) worker.send(message, socket);
-    console.log(`${process.pid}| message=${message}, workerIndex=${workerIndex}`);
+
+    const fd = socket.server._handle.fd;
+    // const add = Addon.add(process.pid, fd);
+    console.log(`${process.pid}| message=${message}, workerIndex=${workerIndex}, fd=${fd}`);
   }
 }
 
@@ -102,6 +106,14 @@ function onWorkerProcess(opts) {
   process.on(`message`, function onMessage(message, socket) {
     if (message === `${opts.httpPort}`) http.emit(`connection`, socket);
     if (message === `${opts.httpsPort}`) https.emit(`connection`, socket);
+
+    const fd = socket._handle.fd;
+    // const add = Addon.add(process.pid, fd);
+    console.log(`${process.pid}| message=${message}, fd=${fd}`);
+
+    socket.on(`close`, function onClose() {
+      console.log(`${process.pid}| closed message=${message}, fd=${fd}`);
+    });
   });
 
   // settings to worker application

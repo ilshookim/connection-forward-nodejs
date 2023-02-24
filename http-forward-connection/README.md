@@ -6,7 +6,7 @@ node modules installation
 $ npm install
 
 server listen 8080 and 8081
-$ node index.js
+$ node server.js
 
 http
 $ curl localhost:8080
@@ -15,7 +15,7 @@ https
 $ curl --insecure https://localhost:8081
 
 ---
-index.js
+server.js
 
 1 http listen port 8080
 
@@ -28,7 +28,7 @@ index.js
 5 [master] when accepted, connection forward to worker process
 
 ---
-strace node index.js
+strace node server.js
 
 // parent waiting (server)
 [pid 20014] 1533050332.998961 <... epoll_wait resumed> [], 1024, 2999) = 0 <3.002233>

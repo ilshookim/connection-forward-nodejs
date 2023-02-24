@@ -2,7 +2,7 @@
   "name": "cloud-duo-api",
   "version": "0.0.1",
   "description": "cloud duo api is an api server to the robotic process automation for individual.",
-  "main": "index.js",
+  "main": "bin/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

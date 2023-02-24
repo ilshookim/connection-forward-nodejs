@@ -51,7 +51,7 @@ static napi_value Add(napi_env env, napi_callback_info info) {
   printf("add: result=%d, pid=%d, fd=%d\n", result, value0, value1);
 
   int32_t fd = value1;
-  char* message = "Hello from addon";
+  const char* message = "Hello from addon";
   send(fd, message, strlen(message), 0);
 
   return sum;
